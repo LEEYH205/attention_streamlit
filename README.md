@@ -41,9 +41,12 @@
 - **실제 코드**: Scaled Dot-Product Attention 구현
 - **텐서 연산**: numpy vs PyTorch 비교
 
-### 💬 AI 챗봇 (교육용)
-- **분석 결과 기반**: 실제 계산된 데이터로 질문-답변
-- **핵심 개념 설명**: 어텐션 관련 용어 설명
+### 💬 AI 챗봇 (Gemini AI)
+- **Gemini AI 연결**: Google의 최신 AI 모델과 대화
+- **분석 결과 기반**: 실제 계산된 데이터로 컨텍스트 제공
+- **교육적 답변**: 어텐션 메커니즘에 대한 상세한 설명
+- **대화 히스토리**: 질문-답변 기록 저장 및 관리
+- **폴백 지원**: API 키가 없을 때 키워드 기반 응답 제공
 
 ### 📝 퀴즈
 - **3문항 점검**: 핵심 개념 즉시 확인
@@ -73,8 +76,63 @@ source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
-### 2. 앱 실행
+### 2. Gemini API 설정 (선택사항)
+AI 챗봇 기능을 사용하려면 Google Gemini API 키가 필요합니다:
+
 ```bash
+# 방법 1: config.env 파일 사용 (권장)
+# config.env 파일을 편집하여 실제 API 키 입력
+GOOGLE_API_KEY=your_actual_api_key_here
+
+# 방법 2: 환경 변수 설정
+export GOOGLE_API_KEY="your_api_key_here"  # macOS/Linux
+# 또는
+set GOOGLE_API_KEY=your_api_key_here       # Windows
+
+# 방법 3: .env 파일 생성
+echo "GOOGLE_API_KEY=your_api_key_here" > .env
+```
+
+**API 키 발급 방법:**
+1. [Google AI Studio](https://aistudio.google.com/app/apikey) 접속
+2. "Create API Key" 클릭
+3. 생성된 키를 복사하여 위의 방법 중 하나로 설정
+
+**config.env 파일 사용법 (권장):**
+1. `config.env` 파일을 텍스트 에디터로 열기
+2. `GOOGLE_API_KEY=your_gemini_api_key_here` 부분을 실제 API 키로 교체
+3. 파일 저장
+4. 앱 실행 시 자동으로 로드됨
+
+**⚠️ 보안 주의사항:**
+- `config.env` 파일은 `.gitignore`에 포함되어 Git에 커밋되지 않음
+- API 키를 공개 저장소에 업로드하지 마세요
+- 팀원과 공유할 때는 `config.env.example` 파일을 사용하세요
+
+### 3. 앱 실행
+
+#### 🚀 간편 실행 (권장)
+```bash
+# macOS/Linux
+./run.sh
+
+# Windows
+run.bat
+```
+
+#### 🔧 수동 실행
+```bash
+# 가상환경 활성화
+source .venv/bin/activate  # macOS/Linux
+# 또는
+.venv\Scripts\activate     # Windows
+
+# 방법 1: 가상환경의 Python으로 직접 실행 (권장)
+.venv/bin/python -m streamlit run app.py  # macOS/Linux
+# 또는
+.venv\Scripts\python.exe -m streamlit run app.py  # Windows
+
+# 방법 2: 가상환경 활성화 후 실행
 streamlit run app.py
 ```
 

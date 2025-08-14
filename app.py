@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import torch
 from dataclasses import dataclass
 import math
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
 # 한글 폰트 설정
 import matplotlib.font_manager as fm
@@ -23,6 +26,46 @@ else:  # Linux
 plt.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="Attention 교육용 데모", layout="wide")
+
+# Gemini API 설정
+def setup_gemini_api():
+    """Gemini API 설정 및 초기화"""
+    # config.env 파일 로드
+    load_dotenv('config.env')
+    
+    # API 키 로드 우선순위: 1) config.env, 2) 환경변수, 3) Streamlit secrets
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    if not api_key:
+        api_key = st.secrets.get("GOOGLE_API_KEY") if hasattr(st, 'secrets') else None
+    
+    if not api_key:
+        # 사이드바에 API 키 입력 필드 제공
+        api_key = st.sidebar.text_input(
+            "🔑 Google Gemini API 키",
+            type="password",
+            help="Google AI Studio에서 API 키를 발급받아 입력하세요. https://aistudio.google.com/app/apikey"
+        )
+        
+        if api_key:
+            # API 키를 세션 상태에 저장
+            st.session_state.gemini_api_key = api_key
+            st.success("✅ API 키가 설정되었습니다!")
+        else:
+            st.sidebar.warning("⚠️ Gemini API 기능을 사용하려면 API 키를 입력하세요.")
+            return None
+    
+    try:
+        # Gemini API 초기화
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        return model
+    except Exception as e:
+        st.error(f"❌ Gemini API 초기화 실패: {str(e)}")
+        return None
+
+# Gemini API 모델 초기화
+gemini_model = setup_gemini_api()
 
 # -----------------------------
 # Utilities
@@ -1033,67 +1076,162 @@ with tabs[6]:
         st.dataframe(np_to_df(context_torch.detach().numpy(), row_idx=src_tokens))
 
 # --------------------------------------------------
-# 탭 8: AI 챗봇 (간단 예시)
+# 탭 8: AI 챗봇 (Gemini AI)
 # --------------------------------------------------
 with tabs[7]:
-    st.subheader("🔬 분석 결과에 대해 질문해보세요!")
-
-    if analyze:
-        # 어텐션 계산 (기존 로직 재사용)
-        Qd = linear_projection(tgt_E, Wq)
-        Ks = linear_projection(src_E, Wk)
-        Vs = linear_projection(src_E, Wv)
-        _, Wd, _ = scaled_dot_product_attention(Qd, Ks, Vs)
+    st.subheader("🤖 Gemini AI 챗봇과 대화해보세요!")
+    
+    # Gemini API 상태 확인
+    if gemini_model:
+        st.success("✅ Gemini AI가 연결되었습니다!")
         
-        st.markdown("### 📊 분석 결과 기반 질문")
-        
-        if len(tgt_tokens) > 0 and len(src_tokens) > 0:
-            q1 = f"'{tgt_tokens[0]}' 단어가 가장 주목한 원본 단어는 무엇인가요?"
-            if st.button(q1):
-                focused_idx = np.argmax(Wd[0])
-                focused_word = src_tokens[focused_idx]
-                st.write(f"**답변:** '{focused_word}' 단어입니다. (어텐션 스코어: {Wd[0, focused_idx]:.3f})")
-
-            if len(src_tokens) > 1:
-                q2 = f"'{src_tokens[1]}' 단어는 어떤 번역 단어로부터 가장 많은 주목을 받았나요?"
-                if st.button(q2):
-                    attending_idx = np.argmax(Wd[:, 1])
-                    attending_word = tgt_tokens[attending_idx]
-                    st.write(f"**답변:** '{attending_word}' 단어입니다. (어텐션 스코어: {Wd[attending_idx, 1]:.3f})")
+        if analyze:
+            # 분석 결과를 컨텍스트로 제공
+            analysis_context = f"""
+            현재 분석 중인 데이터:
+            - 소스 토큰 (한국어): {src_tokens}
+            - 타깃 토큰 (영어): {tgt_tokens}
+            - 어텐션 분석이 완료되었습니다.
+            """
             
-            # 추가 질문들
-            q3 = "가장 높은 어텐션 스코어를 가진 단어 쌍은 무엇인가요?"
-            if st.button(q3):
-                max_idx = np.unravel_index(np.argmax(Wd), Wd.shape)
-                max_score = Wd[max_idx]
-                tgt_word = tgt_tokens[max_idx[0]]
-                src_word = src_tokens[max_idx[1]]
-                st.write(f"**답변:** '{tgt_word}' → '{src_word}' (어텐션 스코어: {max_score:.3f})")
+            st.markdown("### 📊 분석 결과 기반 질문")
             
-            q4 = "어떤 영어 단어가 가장 분산된 어텐션을 보이나요?"
-            if st.button(q4):
-                # 엔트로피 계산
-                def calculate_entropy(attention_weights):
-                    eps = 1e-10
-                    weights = np.maximum(attention_weights, eps)
-                    weights = weights / np.sum(weights, axis=-1, keepdims=True)
-                    entropy = -np.sum(weights * np.log(weights), axis=-1)
-                    return entropy
-                
-                entropies = calculate_entropy(Wd)
-                most_distributed_idx = np.argmax(entropies)
-                most_distributed_word = tgt_tokens[most_distributed_idx]
-                st.write(f"**답변:** '{most_distributed_word}' 단어입니다. (엔트로피: {entropies[most_distributed_idx]:.3f})")
+            # 미리 정의된 질문들
+            predefined_questions = [
+                "어텐션 메커니즘이란 무엇인가요?",
+                "Q, K, V의 역할을 설명해주세요",
+                "멀티헤드 어텐션의 장점은 무엇인가요?",
+                "마스킹이 필요한 이유는 무엇인가요?",
+                "현재 분석된 문장의 어텐션 패턴을 해석해주세요"
+            ]
+            
+            st.markdown("**💡 추천 질문들:**")
+            for i, question in enumerate(predefined_questions):
+                if st.button(f"Q{i+1}: {question}", key=f"pre_q_{i}"):
+                    with st.spinner("🤔 Gemini AI가 생각하고 있습니다..."):
+                        try:
+                            prompt = f"""
+                            {analysis_context}
+                            
+                            질문: {question}
+                            
+                            어텐션 메커니즘에 대한 교육적이고 이해하기 쉬운 답변을 한국어로 제공해주세요.
+                            """
+                            
+                            response = gemini_model.generate_content(prompt)
+                            st.markdown(f"**🤖 Gemini AI 답변:**")
+                            st.markdown(response.text)
+                            
+                        except Exception as e:
+                            st.error(f"❌ Gemini AI 응답 생성 실패: {str(e)}")
+            
+            st.markdown("---")
         
-        st.markdown("---")
+        # 자유 질문
         st.markdown("### 💬 자유 질문")
+        user_input = st.text_area(
+            "어텐션 메커니즘에 대해 자유롭게 질문해보세요:",
+            placeholder="예: Transformer와 RNN의 차이점은 무엇인가요?",
+            height=100
+        )
         
-        # 사용자가 직접 질문할 수 있는 기능도 유지
-        user_input = st.text_input("자유롭게 질문해보세요 (예: 어텐션이란?):", "")
-        if st.button("질문하기"):
-            # 간단한 키워드 기반 응답 (실제로는 더 복잡한 모델 사용)
+        if st.button("🤖 Gemini AI에게 질문하기"):
+            if user_input.strip():
+                with st.spinner("🤔 Gemini AI가 생각하고 있습니다..."):
+                    try:
+                        # 컨텍스트 정보 추가
+                        context = ""
+                        if analyze:
+                            context = f"""
+                            현재 분석 중인 데이터:
+                            - 소스 토큰 (한국어): {src_tokens}
+                            - 타깃 토큰 (영어): {tgt_tokens}
+                            
+                            """
+                        
+                        prompt = f"""
+                        {context}
+                        
+                        질문: {user_input}
+                        
+                        어텐션 메커니즘과 관련된 질문에 대해 교육적이고 이해하기 쉬운 답변을 한국어로 제공해주세요.
+                        가능하면 구체적인 예시와 함께 설명해주세요.
+                        """
+                        
+                        response = gemini_model.generate_content(prompt)
+                        st.markdown(f"**🤖 Gemini AI 답변:**")
+                        st.markdown(response.text)
+                        
+                        # 대화 히스토리 저장
+                        if 'chat_history' not in st.session_state:
+                            st.session_state.chat_history = []
+                        
+                        st.session_state.chat_history.append({
+                            'question': user_input,
+                            'answer': response.text,
+                            'timestamp': 'now'
+                        })
+                        
+                    except Exception as e:
+                        st.error(f"❌ Gemini AI 응답 생성 실패: {str(e)}")
+                        st.info("💡 API 키를 확인하거나 잠시 후 다시 시도해보세요.")
+            else:
+                st.warning("질문을 입력해주세요.")
+        
+        # 대화 히스토리 표시
+        if 'chat_history' in st.session_state and st.session_state.chat_history:
+            st.markdown("---")
+            st.markdown("### 📝 대화 히스토리")
+            
+            for i, chat in enumerate(st.session_state.chat_history[-5:]):  # 최근 5개만 표시
+                with st.expander(f"질문 {i+1}: {chat['question'][:50]}..."):
+                    st.markdown(f"**질문:** {chat['question']}")
+                    st.markdown(f"**답변:** {chat['answer']}")
+            
+            if st.button("🗑️ 대화 히스토리 삭제"):
+                st.session_state.chat_history = []
+                st.rerun()
+    
+    else:
+        st.warning("⚠️ Gemini AI를 사용하려면 API 키를 설정해주세요.")
+        st.info("""
+        **API 키 설정 방법:**
+        1. [Google AI Studio](https://aistudio.google.com/app/apikey)에서 API 키 발급
+        2. 사이드바에 API 키 입력
+        3. 또는 환경 변수 `GOOGLE_API_KEY`에 설정
+        
+        **또는 기존 키워드 기반 챗봇 사용:**
+        """)
+        
+        # 기존 키워드 기반 챗봇 (API 키가 없을 때)
+        if analyze:
+            st.markdown("### 📊 분석 결과 기반 질문")
+            
+            Qd = linear_projection(tgt_E, Wq)
+            Ks = linear_projection(src_E, Wk)
+            Vs = linear_projection(src_E, Wv)
+            _, Wd, _ = scaled_dot_product_attention(Qd, Ks, Vs)
+            
+            if len(tgt_tokens) > 0 and len(src_tokens) > 0:
+                q1 = f"'{tgt_tokens[0]}' 단어가 가장 주목한 원본 단어는 무엇인가요?"
+                if st.button(q1, key="fallback_q1"):
+                    focused_idx = np.argmax(Wd[0])
+                    focused_word = src_tokens[focused_idx]
+                    st.write(f"**답변:** '{focused_word}' 단어입니다. (어텐션 스코어: {Wd[0, focused_idx]:.3f})")
+                
+                q2 = "가장 높은 어텐션 스코어를 가진 단어 쌍은 무엇인가요?"
+                if st.button(q2, key="fallback_q2"):
+                    max_idx = np.unravel_index(np.argmax(Wd), Wd.shape)
+                    max_score = Wd[max_idx]
+                    tgt_word = tgt_tokens[max_idx[0]]
+                    src_word = src_tokens[max_idx[1]]
+                    st.write(f"**답변:** '{tgt_word}' → '{src_word}' (어텐션 스코어: {max_score:.3f})")
+        
+        st.markdown("### 💬 키워드 기반 질문")
+        user_input = st.text_input("키워드로 질문해보세요:", placeholder="예: attention, transformer, masking...")
+        if st.button("질문하기", key="fallback_btn"):
             responses = {
-                "어텐션": "어텐션 메커니즘은 입력 시퀀스의 특정 부분에 집중하여 출력을 생성하는 방법입니다.",
+                "attention": "어텐션 메커니즘은 입력 시퀀스의 특정 부분에 집중하여 출력을 생성하는 방법입니다.",
                 "transformer": "Transformer는 어텐션 메커니즘을 기반으로 한 신경망 아키텍처입니다.",
                 "self-attention": "Self-attention은 같은 시퀀스 내의 다른 위치들을 참조하는 어텐션입니다.",
                 "cross-attention": "Cross-attention은 서로 다른 시퀀스 간의 어텐션입니다.",
@@ -1104,17 +1242,14 @@ with tabs[7]:
                 "v": "Value(값)는 실제 내용으로, Query와 가장 잘 맞는 Key에 연결된 정보를 가져옵니다."
             }
             
-            response = "죄송합니다. 질문에 대한 답변을 찾을 수 없습니다. '어텐션', 'transformer', 'self-attention', 'cross-attention', '멀티헤드', '마스킹', 'q', 'k', 'v' 등에 대해 질문해보세요."
+            response = "죄송합니다. 질문에 대한 답변을 찾을 수 없습니다. 'attention', 'transformer', 'self-attention', 'cross-attention', '멀티헤드', '마스킹', 'q', 'k', 'v' 등에 대해 질문해보세요."
             for keyword, resp in responses.items():
                 if keyword.lower() in user_input.lower():
                     response = resp
                     break
             
             st.write("**AI 응답:**", response)
-            st.info("💡 이는 교육용 데모입니다. 실제 AI 챗봇은 더 정교한 어텐션 메커니즘을 사용합니다.")
-
-    else:
-        st.warning("먼저 '분석 시작' 버튼을 눌러주세요.")
+            st.info("💡 이는 키워드 기반 응답입니다. Gemini AI를 사용하면 더 정교한 답변을 받을 수 있습니다.")
 
 # --------------------------------------------------
 # 탭 9: 퀴즈
