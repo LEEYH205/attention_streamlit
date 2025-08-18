@@ -59,7 +59,7 @@ def render_masking_causality(analyze, src_tokens, tgt_tokens, src_E, tgt_E, Wq, 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
         
         # 원본 스코어
-        im1 = ax1.imshow(scores, cmap='RdBu_r', center=0)
+        im1 = ax1.imshow(scores, cmap='RdBu_r', vmin=-np.max(np.abs(scores)), vmax=np.max(np.abs(scores)))
         ax1.set_title("어텐션 스코어 (마스킹 전)", fontsize=12)
         ax1.set_xticks(np.arange(len(tgt_tokens)))
         ax1.set_yticks(np.arange(len(tgt_tokens)))

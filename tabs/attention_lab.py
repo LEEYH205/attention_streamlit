@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.pyplot as plt
 from utils.common import linear_projection, softmax, np_to_df, plot_heatmap
 
 def render_attention_lab(analyze, src_tokens, tgt_tokens, src_E, tgt_E, Wq, Wk, Wv):

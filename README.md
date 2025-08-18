@@ -3,6 +3,8 @@
 
 어텐션 메커니즘의 핵심을 단계별로 시각화하여 보여주는 교육용 웹 애플리케이션입니다. 초보자부터 고급 사용자까지 어텐션의 원리를 체계적으로 학습할 수 있습니다.
 
+**🚀 최신 업데이트**: 모듈화된 구조로 리팩토링 완료! 각 탭별로 독립적인 파일로 분리되어 유지보수성과 확장성이 크게 향상되었습니다.
+
 ## ✨ 주요 기능
 
 ### 🧭 학습 가이드 (초보자용)
@@ -58,6 +60,37 @@
 - **한글/영문 병기**: 접근성 향상
 - **상세 설명**: 개념의 핵심과 예시
 
+## 🏗️ 아키텍처
+
+### 📁 모듈화된 구조
+```
+Attention_streamlit/
+├── app.py                    # 메인 애플리케이션 (탭 구조 및 라우팅)
+├── tabs/                     # 탭별 모듈화된 파일들
+│   ├── learning_guide.py     # 학습 가이드 탭
+│   ├── attention_lab.py      # 어텐션 실험실 탭
+│   ├── softmax_lab.py        # 소프트맥스 실험실 탭
+│   ├── multihead_visualization.py  # 멀티헤드 시각화 탭
+│   ├── masking_causality.py  # 마스킹 & 인과성 탭
+│   ├── attention_map.py      # 어텐션 지도 탭
+│   ├── embedding_analysis.py # 임베딩 분석 탭
+│   ├── pytorch_implementation.py  # PyTorch 구현 탭
+│   └── ai_chatbot.py        # AI 챗봇 탭
+├── utils/                    # 공통 유틸리티 함수
+│   └── common.py            # 공통 함수들 (softmax, plot_heatmap 등)
+├── config.env               # 환경 변수 (API 키 등)
+├── requirements.txt         # Python 의존성
+├── run.sh                  # Unix/Linux 실행 스크립트
+└── run.bat                 # Windows 실행 스크립트
+```
+
+### 🔧 기술적 특징
+- **모듈화**: 각 탭이 독립적인 Python 파일로 분리
+- **재사용성**: 공통 함수들을 `utils/common.py`에 중앙화
+- **유지보수성**: 탭별로 독립적인 개발 및 수정 가능
+- **확장성**: 새로운 탭 추가 시 기존 코드 영향 없음
+- **메모리 최적화**: matplotlib 그래프 자동 정리로 메모리 누수 방지
+
 ## 🚀 시작하기
 
 ### 1. 환경 설정
@@ -76,7 +109,29 @@ source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
-### 2. Gemini API 설정 (선택사항)
+### 2. 실행 방법
+
+#### 방법 1: 실행 스크립트 사용 (권장)
+```bash
+# Unix/Linux/macOS
+./run.sh
+
+# Windows
+run.bat
+```
+
+#### 방법 2: 직접 실행
+```bash
+# 가상환경 활성화
+source .venv/bin/activate  # macOS/Linux
+# 또는
+.venv\Scripts\activate     # Windows
+
+# Streamlit 앱 실행
+streamlit run app.py
+```
+
+### 3. Gemini API 설정 (선택사항)
 AI 챗봇 기능을 사용하려면 Google Gemini API 키가 필요합니다:
 
 ```bash
@@ -97,6 +152,21 @@ echo "GOOGLE_API_KEY=your_api_key_here" > .env
 1. [Google AI Studio](https://aistudio.google.com/app/apikey) 접속
 2. "Create API Key" 클릭
 3. 생성된 키를 복사하여 위의 방법 중 하나로 설정
+
+## 🔧 최근 수정사항
+
+### v2.1 (2025-08-18)
+- **모듈화 완료**: 모든 탭을 독립적인 Python 파일로 분리
+- **메모리 최적화**: matplotlib 그래프 자동 정리로 메모리 누수 방지
+- **코드 구조 개선**: `utils/common.py`에 공통 함수 중앙화
+- **실행 스크립트**: `run.sh`와 `run.bat`으로 편리한 실행 지원
+- **에러 수정**: matplotlib 관련 오류들 해결
+
+### v2.0 (이전)
+- **Google Gemini AI 통합**: AI 챗봇 기능 추가
+- **실시간 어텐션 실험**: 어텐션 유형 변경 시 즉시 결과 확인
+- **Transformer 아키텍처 시각화**: 인터랙티브 다이어그램 추가
+- **학습 가이드 탭**: 초보자를 위한 체계적 학습 경로 제공
 
 **config.env 파일 사용법 (권장):**
 1. `config.env` 파일을 텍스트 에디터로 열기
